@@ -1,7 +1,28 @@
-# Cache files
-backend/app/cache/*.json
-backend/cache
-# Python cache
+# Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Cache directories and files
+backend/app/cache/
+backend/cache/
+.cache/
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes 
