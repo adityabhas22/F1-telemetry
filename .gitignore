@@ -7,6 +7,17 @@ __pycache__/
 backend/app/cache/
 backend/cache/
 .cache/
+*.sqlite
+*.sqlite3
+fastf1_http_cache.sqlite
+*.db
+
+# Large files and data
+*.csv
+*.json
+*.pkl
+*.h5
+*.parquet
 
 # Environment
 .env
