@@ -6,10 +6,12 @@ __pycache__/
 # Cache directories and files
 backend/app/cache/
 backend/cache/
+backend/app/fastf1_cache/
+**/fastf1_cache/**
+**/fastf1_http_cache.sqlite
 .cache/
 *.sqlite
 *.sqlite3
-fastf1_http_cache.sqlite
 *.db
 
 # Large files and data
@@ -18,6 +20,11 @@ fastf1_http_cache.sqlite
 *.pkl
 *.h5
 *.parquet
+*.log
+*.gz
+*.zip
+*.tar
+*.rar
 
 # Environment
 .env
