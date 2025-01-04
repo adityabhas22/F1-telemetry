@@ -1,0 +1,7 @@
+# Cache files
+backend/app/cache/*.json
+backend/cache
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
