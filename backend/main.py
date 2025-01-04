@@ -2,9 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import fastf1
 from app.routers import races
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure FastF1 cache
-fastf1.Cache.enable_cache('cache')
+cache_dir = os.getenv('FF1_CACHE_DIR', 'cache')
+fastf1.Cache.enable_cache(cache_dir)
 
 app = FastAPI(
     title="F1 Race Search API",
@@ -13,9 +19,15 @@ app = FastAPI(
 )
 
 # Configure CORS
+allowed_origins = [
+    "http://localhost:3000",  # Local development
+    "http://localhost:5000",  # Local development alternative
+    os.getenv("FRONTEND_URL", ""),  # Production frontend URL
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

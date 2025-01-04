@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: f1-tracking-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FF1_CACHE_DIR
+        value: /cache
+      - key: FRONTEND_URL
+        value: "https://localhost:3000"
+    disk:
+      name: f1-cache
+      mountPath: /cache
+      sizeGB: 1 

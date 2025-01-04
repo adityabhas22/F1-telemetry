@@ -311,6 +311,7 @@ function initializeTelemetryContainer() {
     const visualization = document.getElementById('data-visualization');
     visualization.innerHTML = `
         <div class="telemetry-container" style="position: relative; background: #1e1e1e; padding: 20px; border-radius: 8px;">
+            <div id="vertical-slider" style="position: absolute; width: 2px; background: rgba(255, 255, 255, 0.7); top: 0; bottom: 0; display: none; pointer-events: none; z-index: 10;"></div>
             <div style="height: 675px; margin-bottom: 2px; position: relative; background: rgba(0, 0, 0, 0.3); border-radius: 4px; padding: 20px;">
                 <div style="position: absolute; left: 20px; top: 20px; color: #fff; font-size: 16px; font-weight: 500; z-index: 1;">
                     Speed (km/h)
@@ -329,8 +330,96 @@ function initializeTelemetryContainer() {
                 </div>
                 <canvas id="brakeChart"></canvas>
             </div>
+            <div id="values-display" style="position: absolute; right: 20px; top: 20px; background: rgba(0, 0, 0, 0.8); padding: 10px; border-radius: 4px; color: white; display: none;"></div>
         </div>
     `;
+
+    // Add mouse move handler to container
+    const container = document.querySelector('.telemetry-container');
+    const slider = document.getElementById('vertical-slider');
+    const valuesDisplay = document.getElementById('values-display');
+
+    container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        
+        // Show and position the slider
+        slider.style.display = 'block';
+        slider.style.left = `${x}px`;
+        
+        // Update values display if charts exist
+        if (state.telemetryChart) {
+            const speedChart = state.telemetryChart.speed;
+            const chartArea = speedChart.chartArea;
+            const xScale = speedChart.scales.x;
+            
+            // Only process if within chart area
+            if (x >= chartArea.left && x <= chartArea.right) {
+                const xValue = xScale.getValueForPixel(x - 20); // Adjust for padding
+                
+                // Binary search to find the exact distance in our sorted array
+                const distances = Array.from(allDistances).sort((a, b) => a - b);
+                let left = 0;
+                let right = distances.length - 1;
+                let exactDistance = distances[0];
+                let minDiff = Math.abs(distances[0] - xValue);
+
+                while (left <= right) {
+                    const mid = Math.floor((left + right) / 2);
+                    const diff = Math.abs(distances[mid] - xValue);
+                    
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        exactDistance = distances[mid];
+                    }
+                    
+                    if (distances[mid] < xValue) {
+                        left = mid + 1;
+                    } else if (distances[mid] > xValue) {
+                        right = mid - 1;
+                    } else {
+                        exactDistance = distances[mid];
+                        break;
+                    }
+                }
+
+                // Find the values at this exact distance for each chart
+                const values = [];
+                Object.entries(state.telemetryChart).forEach(([type, chart]) => {
+                    chart.data.datasets.forEach(dataset => {
+                        const point = dataset.data.find(p => p.x === exactDistance);
+                        if (point) {
+                            let value = '';
+                            switch(type) {
+                                case 'speed':
+                                    value = `${Math.round(point.y)} km/h`;
+                                    break;
+                                case 'throttle':
+                                    value = `${Math.round(point.y)}%`;
+                                    break;
+                                case 'brake':
+                                    value = point.y <= 0 ? 'OFF' : 'ON';
+                                    break;
+                            }
+                            values.push(`${dataset.label}: ${type.charAt(0).toUpperCase() + type.slice(1)} ${value}`);
+                        }
+                    });
+                });
+
+                // Update values display
+                valuesDisplay.style.display = 'block';
+                valuesDisplay.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px">Distance: ${Math.round(exactDistance)}m</div>
+                    ${values.join('<br>')}
+                `;
+            }
+        }
+    });
+
+    container.addEventListener('mouseleave', () => {
+        slider.style.display = 'none';
+        valuesDisplay.style.display = 'none';
+    });
 }
 
 // Update selected telemetry laps display
@@ -499,9 +588,9 @@ async function createLapTimesChart() {
                 },
                 tooltip: {
                     enabled: true,
-                    mode: 'nearest',
-                    intersect: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
                     titleColor: '#ffffff',
                     bodyColor: '#ffffff',
                     padding: 10,
@@ -512,13 +601,30 @@ async function createLapTimesChart() {
                     bodyFont: {
                         size: 13
                     },
+                    itemSort: (a, b) => {
+                        // Sort by driver number and lap number
+                        const [driverA, lapA] = a.dataset.label.match(/Driver #(\d+) - Lap (\d+)/).slice(1).map(Number);
+                        const [driverB, lapB] = b.dataset.label.match(/Driver #(\d+) - Lap (\d+)/).slice(1).map(Number);
+                        return driverA === driverB ? lapA - lapB : driverA - driverB;
+                    },
                     callbacks: {
-                        title: (items) => `Lap ${items[0].dataIndex + 1}`,
+                        title: (items) => {
+                            if (items.length === 0) return '';
+                            const item = items[0];
+                            return `Distance: ${Math.round(item.parsed.x)}m`;
+                        },
                         label: (context) => {
-                            const seconds = context.raw;
-                            const minutes = Math.floor(seconds / 60);
-                            const remainingSeconds = (seconds % 60).toFixed(3);
-                            return `${context.dataset.label}: ${minutes}:${remainingSeconds.padStart(6, '0')}`;
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            
+                            // Format based on chart type
+                            if (context.chart.canvas.id === 'speedChart') {
+                                return `${label} - Speed: ${Math.round(value)} km/h`;
+                            } else if (context.chart.canvas.id === 'throttleChart') {
+                                return `${label} - Throttle: ${Math.round(value)}%`;
+                            } else {
+                                return `${label} - Brake: ${value <= 0 ? 'OFF' : 'ON'}`;
+                            }
                         }
                     }
                 }
@@ -697,29 +803,12 @@ function generateTelemetryColor(baseColor, index) {
 
 // Create telemetry charts with multiple drivers
 async function createTelemetryCharts(telemetryData) {
-    // Add vertical line plugin
-    const verticalLinePlugin = {
-        id: 'verticalLine',
-        beforeDraw: (chart) => {
-            if (chart.tooltip?._active?.length) {
-                const activePoint = chart.tooltip._active[0];
-                const { ctx } = chart;
-                const { x } = activePoint.element;
-                const topY = chart.scales.y.top;
-                const bottomY = chart.scales.y.bottom;
-
-                // Draw vertical line
-                ctx.save();
-                ctx.beginPath();
-                ctx.moveTo(x, topY);
-                ctx.lineTo(x, bottomY);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.stroke();
-                ctx.restore();
-            }
-        }
-    };
+    // Create a shared array of X coordinates (distances)
+    const allDistances = new Set();
+    Object.values(telemetryData).forEach(data => {
+        data.telemetry.forEach(t => allDistances.add(t.distance));
+    });
+    const sortedDistances = Array.from(allDistances).sort((a, b) => a - b);
 
     // Common options for all charts
     const commonOptions = {
@@ -727,11 +816,9 @@ async function createTelemetryCharts(telemetryData) {
         maintainAspectRatio: false,
         interaction: {
             mode: 'index',
-            axis: 'x',
             intersect: false
         },
         plugins: {
-            verticalLine: true,
             legend: {
                 display: true,
                 position: 'top',
@@ -744,40 +831,22 @@ async function createTelemetryCharts(telemetryData) {
                     pointStyle: 'circle'
                 }
             },
-            tooltip: {
-                enabled: true,
-                mode: 'index',
-                intersect: false,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                titleColor: '#ffffff',
-                bodyColor: '#ffffff',
-                padding: 10,
-                titleFont: {
-                    size: 14,
-                    weight: 'bold'
+            tooltip: false,  // Disable default tooltip
+            crosshair: {
+                line: {
+                    color: '#fff',
+                    width: 1,
+                    dashPattern: [5, 5]
                 },
-                bodyFont: {
-                    size: 13
+                sync: {
+                    enabled: true,
+                    group: 1,
                 },
-                callbacks: {
-                    title: (items) => {
-                        if (items.length === 0) return '';
-                        const item = items[0];
-                        return `Distance: ${Math.round(item.parsed.x)}m`;
-                    },
-                    label: (context) => {
-                        const label = context.dataset.label || '';
-                        const value = context.parsed.y;
-                        
-                        // Format based on chart type
-                        if (context.chart.canvas.id === 'speedChart') {
-                            return `${label} - Speed: ${Math.round(value)} km/h`;
-                        } else if (context.chart.canvas.id === 'throttleChart') {
-                            return `${label} - Throttle: ${Math.round(value)}%`;
-                        } else {
-                            return `${label} - Brake: ${value <= 0 ? 'OFF' : 'ON'}`;
-                        }
-                    }
+                zoom: {
+                    enabled: false
+                },
+                snap: {
+                    enabled: true
                 }
             }
         },
@@ -820,6 +889,29 @@ async function createTelemetryCharts(telemetryData) {
             }
         }
     };
+
+    // Remove custom slider and values display
+    const container = document.querySelector('.telemetry-container');
+    container.innerHTML = `
+        <div style="height: 675px; margin-bottom: 2px; position: relative; background: rgba(0, 0, 0, 0.3); border-radius: 4px; padding: 20px;">
+            <div style="position: absolute; left: 20px; top: 20px; color: #fff; font-size: 16px; font-weight: 500; z-index: 1;">
+                Speed (km/h)
+            </div>
+            <canvas id="speedChart"></canvas>
+        </div>
+        <div style="height: 450px; margin-bottom: 2px; position: relative; background: rgba(0, 0, 0, 0.3); border-radius: 4px; padding: 20px;">
+            <div style="position: absolute; left: 20px; top: 20px; color: #fff; font-size: 16px; font-weight: 500; z-index: 1;">
+                Throttle (%)
+            </div>
+            <canvas id="throttleChart"></canvas>
+        </div>
+        <div style="height: 300px; position: relative; background: rgba(0, 0, 0, 0.3); border-radius: 4px; padding: 20px;">
+            <div style="position: absolute; left: 20px; top: 20px; color: #fff; font-size: 16px; font-weight: 500; z-index: 1;">
+                Brake
+            </div>
+            <canvas id="brakeChart"></canvas>
+        </div>
+    `;
 
     // Create datasets for each chart type
     const chartData = {
@@ -890,7 +982,10 @@ async function createTelemetryCharts(telemetryData) {
         });
     }
 
-    // Create or update charts
+    // Create charts with crosshair plugin
+    Chart.register(ChartjsPluginCrosshair);
+
+    // Create charts with synchronized X coordinates
     state.telemetryChart = {
         speed: new Chart(document.getElementById('speedChart').getContext('2d'), {
             type: 'line',
@@ -911,8 +1006,7 @@ async function createTelemetryCharts(telemetryData) {
                         }
                     }
                 }
-            },
-            plugins: [verticalLinePlugin]
+            }
         }),
         throttle: new Chart(document.getElementById('throttleChart').getContext('2d'), {
             type: 'line',
@@ -939,8 +1033,7 @@ async function createTelemetryCharts(telemetryData) {
                         }
                     }
                 }
-            },
-            plugins: [verticalLinePlugin]
+            }
         }),
         brake: new Chart(document.getElementById('brakeChart').getContext('2d'), {
             type: 'line',
@@ -967,45 +1060,9 @@ async function createTelemetryCharts(telemetryData) {
                         }
                     }
                 }
-            },
-            plugins: [verticalLinePlugin]
+            }
         })
     };
-
-    // Add mousemove event listener to sync tooltips
-    const charts = Object.values(state.telemetryChart);
-    charts.forEach(chart => {
-        chart.canvas.addEventListener('mousemove', (e) => {
-            const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false });
-            if (points.length > 0) {
-                const point = points[0];
-                charts.forEach(otherChart => {
-                    if (otherChart !== chart) {
-                        const tooltip = otherChart.tooltip;
-                        const chartArea = otherChart.chartArea;
-                        const x = point.element.x;
-                        const y = chartArea.top + (chartArea.bottom - chartArea.top) / 2;
-                        
-                        tooltip.setActiveElements([{
-                            datasetIndex: 0,
-                            index: point.index
-                        }], {
-                            x: x,
-                            y: y
-                        });
-                    }
-                });
-            }
-            charts.forEach(c => c.update('none'));
-        });
-
-        chart.canvas.addEventListener('mouseleave', () => {
-            charts.forEach(otherChart => {
-                otherChart.tooltip.setActiveElements([], {});
-                otherChart.update('none');
-            });
-        });
-    });
 }
 
 // Error handling
