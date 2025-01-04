@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LAP CHART</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="selection-bar">
+            <div class="select-wrapper">
+                <select id="year-select" onchange="handleYearChange()">
+                    <option value="" disabled selected>Year...</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper">
+                <select id="gp-select" onchange="handleGPChange()" disabled>
+                    <option value="" disabled selected>GP...</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper session-select">
+                <select id="session-select" onchange="handleSessionChange()" disabled>
+                    <option value="" disabled selected>Session...</option>
+                    <option value="race">RACE</option>
+                    <option value="qualifying">QUALIFYING</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper">
+                <select id="driver-select" onchange="handleDriverChange()" disabled>
+                    <option value="" disabled selected>Drivers...</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="data-display">
+            <div id="driver-data">
+                <!-- Driver data will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html> 

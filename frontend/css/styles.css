@@ -1,0 +1,166 @@
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #0a0a0a;
+    color: #ffffff;
+}
+
+.container {
+    width: 100%;
+    padding: 20px;
+}
+
+/* Selection Bar */
+#selection-bar {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.select-wrapper {
+    position: relative;
+    min-width: 150px;
+    transition: all 0.3s ease;
+}
+
+/* Session select styling */
+.select-wrapper.session-select {
+    min-width: 200px;
+}
+
+.select-wrapper.loading::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    background-color: rgba(30, 30, 30, 0.9);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+select:not(:disabled):hover {
+    background-color: rgba(40, 40, 40, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+}
+
+select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.select-wrapper:not(.loading)::after {
+    content: '▼';
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.select-wrapper:hover:not(.loading)::after {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Option styling */
+select option {
+    background-color: #1e1e1e;
+    color: #fff;
+    padding: 12px;
+}
+
+/* Data Display */
+#data-display {
+    background-color: rgba(30, 30, 30, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+/* Chart Styles */
+canvas {
+    background-color: rgba(20, 20, 20, 0.9);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Lap Selection */
+#lap-selector {
+    margin: 20px 0;
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+#lap-selector select {
+    margin-right: 10px;
+    width: auto;
+    min-width: 200px;
+}
+
+#lap-selector button {
+    padding: 12px 24px;
+    background-color: #e10600;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#lap-selector button:hover {
+    background-color: #ff0000;
+    transform: translateY(-1px);
+}
+
+#lap-selector button:active {
+    transform: translateY(0);
+} 
