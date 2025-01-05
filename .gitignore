@@ -1,7 +1,38 @@
-# Python cache files
+# Environment variables
+.env
+.env.*
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# FastF1 cache
+backend/app/fastf1_cache/
+backend/app/cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Cache directories and files
 backend/app/cache/
@@ -27,7 +58,6 @@ backend/app/fastf1_cache/
 *.rar
 
 # Environment
-.env
 .venv
 env/
 venv/

@@ -57,6 +57,11 @@ const state = {
     selectedLapsByClick: new Set()  // Store clicked laps as "driverNumber:lapNumber"
 };
 
+// Register Chart.js plugins
+if (typeof Chart !== 'undefined' && typeof ChartjsPluginCrosshair !== 'undefined') {
+    Chart.register(ChartjsPluginCrosshair);
+}
+
 // Available colors for drivers (high contrast colors)
 const driverColorPalette = [
     '#ff0000',  // Red
@@ -72,7 +77,7 @@ const driverColorPalette = [
 ];
 
 // API base URL
-const API_BASE_URL = 'http://localhost:8080/races';
+const API_BASE_URL = 'http://localhost:8000/races';
 
 // Format time string to mm:ss.SSS
 function formatTime(timeStr) {
@@ -103,6 +108,15 @@ async function init() {
     document.getElementById('year-select').value = '2024';
     await handleYearChange();
 }
+
+// Make sure we initialize only after DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Register Chart.js plugins again after DOM is loaded
+    if (typeof Chart !== 'undefined' && typeof ChartjsPluginCrosshair !== 'undefined') {
+        Chart.register(ChartjsPluginCrosshair);
+    }
+    init();
+});
 
 // Handle year selection change
 async function handleYearChange() {
@@ -531,7 +545,7 @@ async function createLapTimesChart() {
     state.lapTimesChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array.from({ length: Math.max(...datasets.map(d => d.lapNumbers.length)) }, (_, i) => i + 1),
+            labels: Array.from({ length: Math.max(...datasets.map(d => d.data.length)) }, (_, i) => `Lap ${i + 1}`),
             datasets: datasets
         },
         options: {
@@ -546,7 +560,7 @@ async function createLapTimesChart() {
                 if (elements.length > 0) {
                     const element = elements[0];
                     const dataset = state.lapTimesChart.data.datasets[element.datasetIndex];
-                    const lapNumber = dataset.lapNumbers[element.index];
+                    const lapNumber = parseInt(dataset.lapNumbers[element.index]);
                     const driverNumber = dataset.driverNumber;
                     const key = `${driverNumber}:${lapNumber}`;
                     
@@ -601,30 +615,15 @@ async function createLapTimesChart() {
                     bodyFont: {
                         size: 13
                     },
-                    itemSort: (a, b) => {
-                        // Sort by driver number and lap number
-                        const [driverA, lapA] = a.dataset.label.match(/Driver #(\d+) - Lap (\d+)/).slice(1).map(Number);
-                        const [driverB, lapB] = b.dataset.label.match(/Driver #(\d+) - Lap (\d+)/).slice(1).map(Number);
-                        return driverA === driverB ? lapA - lapB : driverA - driverB;
-                    },
                     callbacks: {
                         title: (items) => {
                             if (items.length === 0) return '';
-                            const item = items[0];
-                            return `Distance: ${Math.round(item.parsed.x)}m`;
+                            return `Lap ${items[0].label}`;
                         },
-                        label: (context) => {
-                            const label = context.dataset.label || '';
-                            const value = context.parsed.y;
-                            
-                            // Format based on chart type
-                            if (context.chart.canvas.id === 'speedChart') {
-                                return `${label} - Speed: ${Math.round(value)} km/h`;
-                            } else if (context.chart.canvas.id === 'throttleChart') {
-                                return `${label} - Throttle: ${Math.round(value)}%`;
-                            } else {
-                                return `${label} - Brake: ${value <= 0 ? 'OFF' : 'ON'}`;
-                            }
+                        label: function(context) {
+                            const minutes = Math.floor(context.parsed.y / 60);
+                            const seconds = (context.parsed.y % 60).toFixed(3);
+                            return `${context.dataset.label}: ${minutes}:${seconds.padStart(6, '0')}`;
                         }
                     }
                 }
@@ -662,7 +661,7 @@ async function createLapTimesChart() {
                         font: {
                             size: 12
                         },
-                        callback: (value) => {
+                        callback: function(value) {
                             const minutes = Math.floor(value / 60);
                             const seconds = (value % 60).toFixed(3);
                             return `${minutes}:${seconds.padStart(6, '0')}`;
@@ -693,23 +692,34 @@ async function loadTelemetryForSelectedLaps() {
         // Fetch telemetry data for all selected laps
         const telemetryData = {};
         for (const key of state.selectedLapsByClick) {
-            const [driverNumber, lapNumber] = key.split(':');
+            const [driverNumber, lapNumber] = key.split(':').map(str => str.trim());
             try {
-                const response = await fetch(
-                    `${API_BASE_URL}/telemetry?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}&driver_number=${driverNumber}&lap_number=${lapNumber}&session_type=${state.selectedSession}`
-                );
+                console.log(`Fetching telemetry for ${key} - Driver: ${driverNumber}, Lap: ${lapNumber}`);
+                const url = `${API_BASE_URL}/telemetry?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}&driver_number=${driverNumber}&lap_number=${parseInt(lapNumber)}&session_type=${state.selectedSession}`;
+                console.log(`URL: ${url}`);
+                
+                const response = await fetch(url);
+                console.log(`Response status: ${response.status}`);
+                
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error(`Error response: ${errorText}`);
+                    throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                 }
+                
                 const data = await response.json();
+                console.log(`Received data:`, data);
+                
                 if (data && data.telemetry && data.telemetry.length > 0) {
                     telemetryData[key] = data;
+                    console.log(`Successfully loaded telemetry for ${key}`);
                 } else {
                     console.warn(`No telemetry data for Driver ${driverNumber}, Lap ${lapNumber}`);
                     state.selectedLapsByClick.delete(key);
                 }
             } catch (error) {
                 console.error(`Error loading telemetry for Driver ${driverNumber}, Lap ${lapNumber}:`, error);
+                showError(`Failed to load telemetry: ${error.message}`);
                 state.selectedLapsByClick.delete(key);
             }
         }
@@ -853,6 +863,7 @@ async function createTelemetryCharts(telemetryData) {
         scales: {
             x: {
                 type: 'linear',
+                min: 0,
                 grid: {
                     color: 'rgba(255, 255, 255, 0.1)',
                     drawBorder: false,
@@ -863,7 +874,8 @@ async function createTelemetryCharts(telemetryData) {
                     font: {
                         size: 12
                     },
-                    callback: (value) => `${value}m`
+                    callback: (value) => `${value}m`,
+                    padding: 0
                 },
                 title: {
                     display: true,
@@ -871,7 +883,8 @@ async function createTelemetryCharts(telemetryData) {
                     color: '#ffffff',
                     font: {
                         size: 12
-                    }
+                    },
+                    padding: 0
                 }
             },
             y: {
@@ -887,6 +900,9 @@ async function createTelemetryCharts(telemetryData) {
                     }
                 }
             }
+        },
+        layout: {
+            padding: 0
         }
     };
 
@@ -981,9 +997,6 @@ async function createTelemetryCharts(telemetryData) {
             stepped: true
         });
     }
-
-    // Create charts with crosshair plugin
-    Chart.register(ChartjsPluginCrosshair);
 
     // Create charts with synchronized X coordinates
     state.telemetryChart = {

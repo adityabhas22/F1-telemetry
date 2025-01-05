@@ -1,11 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import fastf1
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
+from app.cache_manager import CacheManager
+import asyncio
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/races", tags=["races"])
+cache_manager = CacheManager()
 
 class DriverResult(BaseModel):
     position: Optional[int]
@@ -28,18 +32,19 @@ class RaceResult(BaseModel):
     results: List[DriverResult]
 
 @router.get("/calendar/{year}")
-def get_race_calendar(year: int):
+async def get_race_calendar(year: int):
+    cache_key = f"calendar:{year}"
+    
+    # Try to get from cache first
+    cached_data = await cache_manager.get_cached_data(cache_key)
+    if cached_data:
+        return cached_data
+        
     try:
         schedule = fastf1.get_event_schedule(year)
         races = []
         
         for _, event in schedule.iterrows():
-            # Skip events that haven't happened yet
-            event_date = pd.to_datetime(event['EventDate'])
-            if event_date > pd.Timestamp.now():
-                continue
-                
-            # Skip testing sessions
             if 'Testing' in event['OfficialEventName']:
                 continue
                 
@@ -49,16 +54,38 @@ def get_race_calendar(year: int):
                 "circuit_name": event['Location'],
                 "country": event['Country'],
                 "date": event['EventDate'].strftime("%Y-%m-%d"),
-                "available_sessions": ['R', 'Q']  # We know these sessions exist for past races
+                "available_sessions": ['R', 'Q']
             }
             races.append(race_info)
-            
+        
+        # Cache the results for 24 hours
+        await cache_manager.set_cached_data(cache_key, races, ttl=86400)
         return races
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Could not find races for year {year}")
 
 @router.get("/results")
-def get_race_results(year: int, race_name: str):
+async def get_race_results(
+    year: int,
+    race_name: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+):
+    cache_key = f"results:{year}:{race_name}"
+    
+    # Try to get from cache first
+    cached_data = await cache_manager.get_cached_data(cache_key)
+    if cached_data:
+        # Apply pagination to cached data
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        return {
+            **cached_data,
+            "results": cached_data["results"][start_idx:end_idx],
+            "page": page,
+            "total_pages": (len(cached_data["results"]) + page_size - 1) // page_size
+        }
+    
     try:
         schedule = fastf1.get_event_schedule(year)
         race_info = schedule[schedule['OfficialEventName'] == race_name].iloc[0]
@@ -69,7 +96,6 @@ def get_race_results(year: int, race_name: str):
         
         results = []
         for _, driver in session.results.iterrows():
-            # Convert FastestLap to boolean if it exists
             fastest_lap = False
             if pd.notna(driver.get('FastestLap')):
                 try:
@@ -90,12 +116,26 @@ def get_race_results(year: int, race_name: str):
                 "laps_completed": int(driver['NumberOfLaps']) if pd.notna(driver.get('NumberOfLaps')) else None
             }
             results.append(result)
-            
-        return {
+        
+        full_response = {
             "race_name": race_name,
             "date": race_info['EventDate'].strftime("%Y-%m-%d"),
             "results": results
         }
+        
+        # Cache the full results for 24 hours
+        await cache_manager.set_cached_data(cache_key, full_response, ttl=86400)
+        
+        # Apply pagination
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        return {
+            **full_response,
+            "results": results[start_idx:end_idx],
+            "page": page,
+            "total_pages": (len(results) + page_size - 1) // page_size
+        }
+        
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Could not find race results for {race_name} in {year}")
 
@@ -192,17 +232,28 @@ def get_lap_times(year: int, race_name: str, driver_number: str, session_type: s
 @router.get("/telemetry")
 def get_telemetry(year: int, race_name: str, driver_number: str, lap_number: int, session_type: str):
     try:
+        print(f"Loading telemetry for Year: {year}, Race: {race_name}, Driver: {driver_number}, Lap: {lap_number}, Session: {session_type}")
         schedule = fastf1.get_event_schedule(year)
         race_info = schedule[schedule['OfficialEventName'] == race_name].iloc[0]
         round_number = int(race_info['RoundNumber'])
         
+        print(f"Found race info - Round number: {round_number}")
+        
         # Use 'Q' for qualifying, 'R' for race
         session_identifier = 'Q' if session_type.lower() == 'qualifying' else 'R'
+        print(f"Loading session: {session_identifier}")
         session = fastf1.get_session(year, round_number, session_identifier)
         session.load()
         
-        lap = session.laps.pick_driver(driver_number).pick_lap(lap_number)
+        print(f"Getting laps for driver {driver_number}")
+        laps = session.laps.pick_driver(driver_number)
+        print(f"Found {len(laps)} laps for driver")
+        
+        print(f"Getting lap {lap_number}")
+        lap = laps.pick_lap(lap_number)
+        print(f"Getting telemetry for lap")
         telemetry = lap.get_telemetry()
+        print(f"Found {len(telemetry)} telemetry points")
         
         return {
             "race_name": race_name,
@@ -222,4 +273,5 @@ def get_telemetry(year: int, race_name: str, driver_number: str, lap_number: int
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Could not find telemetry for driver {driver_number} lap {lap_number} in {race_name} {year}") 
+        print(f"Error in telemetry endpoint: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Could not find telemetry for driver {driver_number} lap {lap_number} in {race_name} {year}. Error: {str(e)}") 
