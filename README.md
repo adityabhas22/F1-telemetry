@@ -91,8 +91,7 @@ F1 Tracking Website/
 ## Development
 
 The project is built with a focus on:
-- Clean, modular code structure
-- Responsive and intuitive user interface
+- intuitive user interface
 - Efficient data handling and caching
 - Real-time data visualization
 - Cross-browser compatibility
