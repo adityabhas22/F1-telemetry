@@ -54,12 +54,20 @@ const CONFIG = {
     }
 };
 
-// Use development configuration
-const currentConfig = CONFIG.development;
-
-// Determine environment based on hostname
+// Use development configuration by default
 const ENVIRONMENT = window.location.hostname === 'localhost' ? 'development' : 'production';
 const API_BASE_URL = CONFIG[ENVIRONMENT].API_BASE_URL;
+
+// Update fetch configuration
+const fetchConfig = {
+    mode: 'cors',
+    credentials: 'include',  // Include credentials
+    headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+    }
+};
 
 // Global state to store selected data
 const state = {
@@ -149,14 +157,7 @@ async function handleYearChange() {
     // Load races for selected year
     try {
         const response = await fetch(`${API_BASE_URL}/calendar/${state.selectedYear}`, {
-            method: 'GET',
-            mode: 'cors',
-            credentials: 'omit',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
+            ...fetchConfig
         });
         
         if (!response.ok) {
