@@ -19,18 +19,18 @@ app = FastAPI(
 )
 
 # Configure CORS
-allowed_origins = [
-    "http://localhost:3000",  # Local development
-    "http://localhost:5000",  # Local development alternative
-    os.getenv("FRONTEND_URL", ""),  # Production frontend URL
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:5500",  # Local development
+        "http://localhost:3000",  # Local development alternative port
+        "https://f1-telemetry-flax.vercel.app"  # Production Vercel domain
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600
 )
 
 # Include routers

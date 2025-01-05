@@ -4,8 +4,8 @@
     <title>LAP CHART</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair@1.1.6/dist/chartjs-plugin-crosshair.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair@1.1.6/dist/chartjs-plugin-crosshair.min.js"></script>
     <style>
         #env-indicator {
             position: fixed;
@@ -66,12 +66,14 @@
         </div>
     </div>
     <div id="env-indicator"></div>
-    <script src="js/main.js"></script>
-    <script>
-        // Set environment indicator
-        const envIndicator = document.getElementById('env-indicator');
-        envIndicator.textContent = ENVIRONMENT.toUpperCase();
-        envIndicator.classList.add(ENVIRONMENT);
+    <script defer src="js/main.js"></script>
+    <script defer>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set environment indicator
+            const envIndicator = document.getElementById('env-indicator');
+            envIndicator.textContent = ENVIRONMENT.toUpperCase();
+            envIndicator.classList.add(ENVIRONMENT);
+        });
     </script>
 </body>
 </html> 
