@@ -76,6 +76,7 @@ const state = {
     selectedSession: null,
     selectedDrivers: [],  // Array to store multiple drivers
     driverColors: {},    // Map to store color for each driver
+    driverNames: {},     // Map to store names for each driver
     telemetryChart: null,  // Store chart instance for cleanup
     lapTimesChart: null,   // Store lap times chart instance
     currentLapTimes: {},   // Map to store lap times for each driver
@@ -257,6 +258,8 @@ async function handleSessionChange() {
 async function handleDriverChange() {
     const driverSelect = document.getElementById('driver-select');
     const selectedDriver = driverSelect.value;
+    const selectedOption = driverSelect.options[driverSelect.selectedIndex];
+    const driverName = selectedOption.text.split('. ')[1]; // Get name part after position
     
     // Check if driver is already selected
     if (state.selectedDrivers.includes(selectedDriver)) {
@@ -276,6 +279,7 @@ async function handleDriverChange() {
     }
     
     state.driverColors[selectedDriver] = availableColors[0];
+    state.driverNames[selectedDriver] = driverName;
     state.selectedDrivers.push(selectedDriver);
     
     // Reset the dropdown
@@ -291,6 +295,7 @@ function removeDriver(driverNumber) {
     if (index > -1) {
         state.selectedDrivers.splice(index, 1);
         delete state.driverColors[driverNumber];
+        delete state.driverNames[driverNumber];
         delete state.currentLapTimes[driverNumber];
         loadDriverDetails();  // Reload visualization
     }
@@ -318,7 +323,7 @@ async function loadDriverDetails() {
             <div class="selected-drivers">
                 ${state.selectedDrivers.map(driver => `
                     <div class="driver-tag" style="border-color: ${state.driverColors[driver]}">
-                        Driver #${driver}
+                        ${state.driverNames[driver]}
                         <button onclick="removeDriver('${driver}')" class="remove-driver">×</button>
                     </div>
                 `).join('')}
@@ -497,7 +502,7 @@ function updateSelectedLapsDisplay() {
         const [driverNumber, lapNumber] = key.split(':');
         return `
             <div class="telemetry-lap-tag" style="border-color: ${state.driverColors[driverNumber]}">
-                Driver #${driverNumber} - Lap ${lapNumber}
+                ${state.driverNames[driverNumber]} - Lap ${lapNumber}
                 <button onclick="removeTelemetryLap('${key}')" class="remove-lap">×</button>
             </div>
         `;
@@ -553,7 +558,7 @@ async function createLapTimesChart() {
 
         // Add dataset for this driver
         datasets.push({
-            label: `Driver #${driverNumber}`,
+            label: state.driverNames[driverNumber],
             data: filteredLapTimes.map(lap => lap.seconds),
             borderColor: state.driverColors[driverNumber],
             backgroundColor: state.driverColors[driverNumber],
@@ -1011,7 +1016,7 @@ async function createTelemetryCharts(telemetryData) {
         
         // Generate unique color for this lap
         const color = generateTelemetryColor(baseColor, colorIndex);
-        const label = `Driver #${driverNumber} - Lap ${lapNumber}`;
+        const label = `${state.driverNames[driverNumber]} - Lap ${lapNumber}`;
 
         if (!data.telemetry || !Array.isArray(data.telemetry)) {
             console.warn(`Invalid telemetry data for ${label}`);
