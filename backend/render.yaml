@@ -4,7 +4,9 @@ services:
     env: python
     region: oregon
     plan: starter
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      mkdir -p /cache/fastf1
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4
     envVars:
       - key: PYTHON_VERSION
@@ -15,6 +17,8 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: ENVIRONMENT
+        value: production
     autoDeploy: true
     healthCheckPath: /
     disk:

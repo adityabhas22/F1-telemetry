@@ -19,9 +19,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configure FastF1 cache with absolute path
-cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cache')
-os.makedirs(cache_dir, exist_ok=True)
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+if ENVIRONMENT == 'production':
+    cache_dir = '/cache/fastf1'  # Use the mounted disk in production
+else:
+    cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cache')
+
+# Ensure cache directory exists
+try:
+    os.makedirs(cache_dir, exist_ok=True)
+    logger.info(f"Cache directory created/verified at: {cache_dir}")
+except Exception as e:
+    logger.error(f"Error creating cache directory: {e}")
+    # Fallback to a temporary directory if we can't create the cache dir
+    import tempfile
+    cache_dir = os.path.join(tempfile.gettempdir(), 'fastf1_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    logger.warning(f"Using temporary cache directory: {cache_dir}")
+
+# Enable FastF1 cache
 fastf1.Cache.enable_cache(cache_dir)
+logger.info("FastF1 cache enabled")
 
 # Initialize cache manager
 cache_manager = CacheManager()
