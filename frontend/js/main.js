@@ -47,12 +47,15 @@ document.head.appendChild(styles);
 // Environment configuration
 const CONFIG = {
     development: {
-        API_BASE_URL: 'http://localhost:8000/races'
+        API_BASE_URL: 'https://apparent-barnacle-coherent.ngrok-free.app/races'
     },
     production: {
-        API_BASE_URL: 'https://f1-telemetry-1-ihd4.onrender.com/races'
+        API_BASE_URL: 'https://apparent-barnacle-coherent.ngrok-free.app/races'
     }
 };
+
+// Use development configuration
+const currentConfig = CONFIG.development;
 
 // Determine environment based on hostname
 const ENVIRONMENT = window.location.hostname === 'localhost' ? 'development' : 'production';
@@ -143,10 +146,28 @@ async function handleYearChange() {
     const gpWrapper = document.querySelector('.select-wrapper:nth-child(2)');
     gpWrapper.classList.add('loading');
 
-// Load races for selected year
+    // Load races for selected year
     try {
-        const response = await fetch(`${API_BASE_URL}/calendar/${state.selectedYear}`);
+        const response = await fetch(`${API_BASE_URL}/calendar/${state.selectedYear}`, {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const races = await response.json();
+        
+        if (!Array.isArray(races)) {
+            throw new Error('Expected races to be an array, got: ' + typeof races);
+        }
         
         const gpSelect = document.getElementById('gp-select');
         gpSelect.innerHTML = '<option value="" disabled selected>GP...</option>' +
@@ -157,7 +178,7 @@ async function handleYearChange() {
         gpSelect.disabled = false;
     } catch (error) {
         console.error('Error loading races:', error);
-        showError('Failed to load races');
+        showError(`Failed to load races: ${error.message}`);
     } finally {
         gpWrapper.classList.remove('loading');
     }
@@ -202,7 +223,17 @@ async function handleSessionChange() {
     try {
         const endpoint = state.selectedSession === 'qualifying' ? 'qualifying-results' : 'results';
         const response = await fetch(
-            `${API_BASE_URL}/${endpoint}?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}`
+            `${API_BASE_URL}/${endpoint}?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}`,
+            {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            }
         );
         const data = await response.json();
         
@@ -303,7 +334,16 @@ async function loadDriverDetails() {
         // Load lap times for all selected drivers
         for (const driverNumber of state.selectedDrivers) {
             const url = `${API_BASE_URL}/lap-times?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}&driver_number=${driverNumber}&session_type=${state.selectedSession}`;
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            });
             const data = await response.json();
             
             if (!data.lap_times || data.lap_times.length === 0) {
@@ -709,7 +749,16 @@ async function loadTelemetryForSelectedLaps() {
                 const url = `${API_BASE_URL}/telemetry?year=${state.selectedYear}&race_name=${encodeURIComponent(state.selectedRace.race_name)}&driver_number=${driverNumber}&lap_number=${parseInt(lapNumber)}&session_type=${state.selectedSession}`;
                 console.log(`URL: ${url}`);
                 
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
                 console.log(`Response status: ${response.status}`);
                 
                 if (!response.ok) {

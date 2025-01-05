@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <pre id="result" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+
+    <script>
+        const BASE_URL = 'https://8bd8-101-0-62-223.ngrok-free.app';
+        const resultDiv = document.getElementById('result');
+
+        async function testEndpoint(endpoint) {
+            try {
+                const url = `${BASE_URL}${endpoint}`;
+                resultDiv.innerHTML += `Testing: ${url}\n\n`;
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+
+                resultDiv.innerHTML += `Status: ${response.status}\n\n`;
+                
+                const headers = {};
+                for (const [key, value] of response.headers) {
+                    headers[key] = value;
+                }
+                resultDiv.innerHTML += `Response headers:\n${JSON.stringify(headers, null, 2)}\n\n`;
+
+                const text = await response.text();
+                resultDiv.innerHTML += `Raw response:\n${text}\n\n`;
+
+                try {
+                    const data = JSON.parse(text);
+                    resultDiv.innerHTML += `Success: ${JSON.stringify(data, null, 2)}\n\n`;
+                } catch (e) {
+                    resultDiv.innerHTML += `Parse error: ${e.message}\n\nFirst 500 chars of response:\n${text.substring(0, 500)}\n\n`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `Error: ${error.message}\n\n`;
+            }
+            resultDiv.innerHTML += '-------------------\n\n';
+        }
+
+        // Test endpoints one at a time
+        async function runTests() {
+            await testEndpoint('/');
+            console.log('Root endpoint tested');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testEndpoint('/races/calendar/2024');
+            console.log('Calendar endpoint tested');
+        }
+
+        runTests();
+    </script>
+</body>
+</html> 
+</html> 
