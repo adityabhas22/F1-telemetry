@@ -49,12 +49,7 @@ F1 Tracking Website/
 
 ## Getting Started
 
-1. **Prerequisites**
-   - Python 3.8 or higher
-   - Modern web browser
-   - Node.js (optional, for development)
-
-2. **Installation**
+1. **Installation**
    ```bash
    # Clone the repository
    git clone [repository-url]
@@ -67,7 +62,7 @@ F1 Tracking Website/
    ./start.sh
    ```
 
-3. **Usage**
+2. **Usage**
    - Open your web browser and navigate to the application URL
    - Select a year and race from the dropdown menus
    - Choose session type (Race or Qualifying)
