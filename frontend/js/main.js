@@ -602,7 +602,7 @@ async function createLapTimesChart() {
     state.lapTimesChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array.from({ length: Math.max(...datasets.map(d => d.data.length)) }, (_, i) => `Lap ${i + 1}`),
+            labels: datasets[0]?.lapNumbers || [],  // Use actual lap numbers for labels
             datasets: datasets
         },
         options: {
@@ -617,7 +617,7 @@ async function createLapTimesChart() {
                 if (elements.length > 0) {
                     const element = elements[0];
                     const dataset = state.lapTimesChart.data.datasets[element.datasetIndex];
-                    const lapNumber = parseInt(dataset.lapNumbers[element.index]);
+                    const lapNumber = dataset.lapNumbers[element.index];  // Use stored lap number directly
                     const driverNumber = dataset.driverNumber;
                     const key = `${driverNumber}:${lapNumber}`;
                     
