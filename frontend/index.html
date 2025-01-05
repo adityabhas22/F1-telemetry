@@ -6,6 +6,26 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair@1.1.6/dist/chartjs-plugin-crosshair.min.js"></script>
+    <style>
+        #env-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0.7;
+            z-index: 1000;
+        }
+        #env-indicator.development {
+            background-color: #2ecc71;
+            color: white;
+        }
+        #env-indicator.production {
+            background-color: #e74c3c;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -45,6 +65,13 @@
             </div>
         </div>
     </div>
+    <div id="env-indicator"></div>
     <script src="js/main.js"></script>
+    <script>
+        // Set environment indicator
+        const envIndicator = document.getElementById('env-indicator');
+        envIndicator.textContent = ENVIRONMENT.toUpperCase();
+        envIndicator.classList.add(ENVIRONMENT);
+    </script>
 </body>
 </html> 

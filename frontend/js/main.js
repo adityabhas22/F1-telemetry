@@ -44,6 +44,20 @@ styles.textContent = `
 `;
 document.head.appendChild(styles);
 
+// Environment configuration
+const CONFIG = {
+    development: {
+        API_BASE_URL: 'http://localhost:8000/races'
+    },
+    production: {
+        API_BASE_URL: 'https://f1-telemetry-1-ihd4.onrender.com/races'
+    }
+};
+
+// Determine environment based on hostname
+const ENVIRONMENT = window.location.hostname === 'localhost' ? 'development' : 'production';
+const API_BASE_URL = CONFIG[ENVIRONMENT].API_BASE_URL;
+
 // Global state to store selected data
 const state = {
     selectedYear: 2024,  // Default to 2024
@@ -75,9 +89,6 @@ const driverColorPalette = [
     '#0080ff',  // Light Blue
     '#ff0080'   // Pink
 ];
-
-// API base URL
-const API_BASE_URL = 'http://localhost:8000/races';
 
 // Format time string to mm:ss.SSS
 function formatTime(timeStr) {
